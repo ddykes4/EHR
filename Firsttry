@@ -70,6 +70,15 @@ public class PeerSupportServices
     public int Id { get; set; }
     public string Feature { get; set; }
     public string Description { get; set; }
+
+}// Models/OutcomeMeasure.cs
+public class OutcomeMeasure
+{
+    public int Id { get; set; }
+    public string MeasureName { get; set; }
+    public DateTime DateCompleted { get; set; }
+    public Dictionary<string, int> Responses { get; set; } // Question-Response pairs
+    public int TotalScore { get; set; }
 }
 Data Context:
 Set up the database context to interact with the database.
@@ -84,6 +93,17 @@ public class EHRDbContext : DbContext
     public DbSet<OperationsDepartment> OperationsDepartments { get; set; }
     public DbSet<PeerSupportServices> PeerSupportServices { get; set; }
     
+    public EHRDbContext(DbContextOptions<EHRDbContext> options) : base(options) { }
+}// Data/EHRDbContext.cs
+public class EHRDbContext : DbContext
+{
+    public DbSet<ClinicalDepartment> ClinicalDepartments { get; set; }
+    public DbSet<MedicalDepartment> MedicalDepartments { get; set; }
+    public DbSet<HousingDepartment> HousingDepartments { get; set; }
+    public DbSet<OperationsDepartment> OperationsDepartments { get; set; }
+    public DbSet<PeerSupportServices> PeerSupportServices { get; set; }
+    public DbSet<OutcomeMeasure> OutcomeMeasures { get; set; } // Add this line
+
     public EHRDbContext(DbContextOptions<EHRDbContext> options) : base(options) { }
 }
 Services:
@@ -105,6 +125,21 @@ public class ClinicalDepartmentService
     public void Add(ClinicalDepartment clinicalDepartment) { _context.ClinicalDepartments.Add(clinicalDepartment); _context.SaveChanges(); }
     public void Update(ClinicalDepartment clinicalDepartment) { _context.ClinicalDepartments.Update(clinicalDepartment); _context.SaveChanges(); }
     public void Delete(int id) { var entity = _context.ClinicalDepartments.Find(id); if (entity != null) { _context.ClinicalDepartments.Remove(entity); _context.SaveChanges(); }}
+}// Services/OutcomeMeasureService.cs
+public class OutcomeMeasureService
+{
+    private readonly EHRDbContext _context;
+
+    public OutcomeMeasureService(EHRDbContext context)
+    {
+        _context = context;
+    }
+
+    public IEnumerable<OutcomeMeasure> GetAll() => _context.OutcomeMeasures.ToList();
+    public OutcomeMeasure GetById(int id) => _context.OutcomeMeasures.Find(id);
+    public void Add(OutcomeMeasure outcomeMeasure) { _context.OutcomeMeasures.Add(outcomeMeasure); _context.SaveChanges(); }
+    public void Update(OutcomeMeasure outcomeMeasure) { _context.OutcomeMeasures.Update(outcomeMeasure); _context.SaveChanges(); }
+    public void Delete(int id) { var entity = _context.OutcomeMeasures.Find(id); if (entity != null) { _context.OutcomeMeasures.Remove(entity); _context.SaveChanges(); }}
 }
 Controllers:
 Create controllers to handle HTTP requests.
@@ -149,6 +184,45 @@ public class ClinicalDepartmentController : ControllerBase
         _service.Delete(id);
         return NoContent();
     }
+}// Controllers/OutcomeMeasureController.cs
+[ApiController]
+[Route("api/[controller]")]
+public class OutcomeMeasureController : ControllerBase
+{
+    private readonly OutcomeMeasureService _service;
+
+    public OutcomeMeasureController(OutcomeMeasureService service)
+    {
+        _service = service;
+    }
+
+    [HttpGet]
+    public ActionResult<IEnumerable<OutcomeMeasure>> Get() => Ok(_service.GetAll());
+
+    [HttpGet("{id}")]
+    public ActionResult<OutcomeMeasure> Get(int id) => Ok(_service.GetById(id));
+
+    [HttpPost]
+    public IActionResult Post([FromBody] OutcomeMeasure outcomeMeasure)
+    {
+        _service.Add(outcomeMeasure);
+        return CreatedAtAction(nameof(Get), new { id = outcomeMeasure.Id }, outcomeMeasure);
+    }
+
+    [HttpPut("{id}")]
+    public IActionResult Put(int id, [FromBody] OutcomeMeasure outcomeMeasure)
+    {
+        if (id != outcomeMeasure.Id) return BadRequest();
+        _service.Update(outcomeMeasure);
+        return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public IActionResult Delete(int id)
+    {
+        _service.Delete(id);
+        return NoContent();
+    }
 }
 Views:
 Design the user interface using Razor Pages or Blazor.
@@ -176,7 +250,29 @@ html
                 <td>@item.ToolsWorkflows</td>
                 <td>@item.Notes</td>
             </tr>
+        }<!-- Views/OutcomeMeasure/Index.cshtml -->
+@model IEnumerable<OutcomeMeasure>
+
+<h1>Outcome Measures</h1>
+<table>
+    <thead>
+        <tr>
+            <th>Measure Name</th>
+            <th>Date Completed</th>
+            <th>Total Score</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.MeasureName</td>
+                <td>@item.DateCompleted.ToShortDateString()</td>
+                <td>@item.TotalScore</td>
+            </tr>
         }
+    </tbody>
+</table>
     </tbody>
 </table>
 Adding Icons and Navigation:
@@ -199,6 +295,28 @@ html
         <a href="/HousingDepartment">Housing Department</a>
         <a href="/OperationsDepartment">Operations Department</a>
         <a href="/PeerSupportServices">Peer Support Services</a>
+    </div>
+    <div class="container">
+        @RenderBody()
+    </div>
+</body>
+</html><!-- Shared/_Layout.cshtml -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>@ViewData["Title"]</title>
+    <link rel="stylesheet" href="~/css/site.css" />
+</head>
+<body>
+    <div class="navbar">
+        <a href="/">Home</a>
+        <a href="/ClinicalDepartment">Clinical Department</a>
+        <a href="/MedicalDepartment">Medical Department</a>
+        <a href="/HousingDepartment">Housing Department</a>
+        <a href="/OperationsDepartment">Operations Department</a>
+        <a href="/PeerSupportServices">Peer Support Services</a>
+        <a href="/OutcomeMeasure">Outcome Measures</a> <!-- Add this line -->
     </div>
     <div class="container">
         @RenderBody()
@@ -235,6 +353,33 @@ public class Startup
     {
         services.AddDbContext<EHRDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
         services.AddScoped<ClinicalDepartmentService>();
+        services.AddControllersWithViews();
+    }
+
+    public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+    {
+        if (env.IsDevelopment()) { app.UseDeveloperExceptionPage(); }
+        else { app.UseExceptionHandler("/Home/Error"); app.UseHsts(); }
+
+        app.UseHttpsRedirection();
+        app.UseStaticFiles();
+        app.UseRouting();
+        app.UseAuthorization();
+
+        app.UseEndpoints(endpoints => endpoints.MapDefaultControllerRoute());
+    }
+}// Startup.cs
+public class Startup
+{
+    public void ConfigureServices(IServiceCollection services)
+    {
+        services.AddDbContext<EHRDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+        services.AddScoped<ClinicalDepartmentService>();
+        services.AddScoped<MedicalDepartmentService>();
+        services.AddScoped<HousingDepartmentService>();
+        services.AddScoped<OperationsDepartmentService>();
+        services.AddScoped<PeerSupportServicesService>();
+        services.AddScoped<OutcomeMeasureService>(); // Add this line
         services.AddControllersWithViews();
     }
 
