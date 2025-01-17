@@ -1,7 +1,6 @@
 Our EHR platform covers the entire treatment service delivery lifecycle, from intake to discharge. It includes specialized modules for clinical, medical, housing, and operations departments, enhancing efficiency and improving patient care across all aspects of healthcare management.
 
 Project Structure:
-Create a new project in Visual Studio.
 
 Name the project "EHRApplication".
 
